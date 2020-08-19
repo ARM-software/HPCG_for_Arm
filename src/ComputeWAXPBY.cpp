@@ -156,7 +156,7 @@ int ComputeWAXPBY(const local_int_t n, const double alpha, const Vector & x,
 #else
 
 #ifdef HPCG_USE_WAXPBY_ARMPL
-#ifndef HPCG_NO_OEPNMP
+#ifndef HPCG_NO_OPENMP
 #pragma omp parallel default(shared)
 	{
 		local_int_t nthreads = omp_get_num_threads();
@@ -171,7 +171,7 @@ int ComputeWAXPBY(const local_int_t n, const double alpha, const Vector & x,
 		BLAS_dwaxpby_x(lastElement-firstElement, alpha, &xv[firstElement], 1, beta, &yv[firstElement], 1, &wv[firstElement], 1, blas_prec_double);
 	}
 #else // HPCG_NO_OPENMP
-	BLAS_dwaxpby_x(n, alpha, xv, 1, beta, yv, 1, wv, blas_rec_double);
+	BLAS_dwaxpby_x(n, alpha, xv, 1, beta, yv, 1, wv, 1, blas_prec_double);
 #endif // HPCG_NO_OPENMP
 
 #else //HPCG_USE_WAXPBY_ARMPL
