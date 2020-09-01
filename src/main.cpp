@@ -78,7 +78,9 @@ int main(int argc, char * argv[]) {
 
   HPCG_Params params;
 
+  std::cout << " Start init " << std::endl;
   HPCG_Init(&argc, &argv, params);
+  std::cout << " End init " << std::endl;
 
   // Check if QuickPath option is enabled.
   // If the running time is set to zero, we minimize all paths through the program
@@ -87,7 +89,7 @@ int main(int argc, char * argv[]) {
   int size = params.comm_size, rank = params.comm_rank; // Number of MPI processes, My process ID
 
 #ifdef HPCG_DETAILED_DEBUG
-  if (size < 100 && rank==0) HPCG_fout << "Process "<<rank<<" of "<<size<<" is alive with " << params.numThreads << " threads." <<endl;
+  if (size < 100 && rank==0) std::cout << "Process "<<rank<<" of "<<size<<" is alive with " << params.numThreads << " threads." <<endl;
 
   if (rank==0) {
     char c;
@@ -105,7 +107,9 @@ int main(int argc, char * argv[]) {
   nz = (local_int_t)params.nz;
   int ierr = 0;  // Used to check return codes on function calls
 
+  std::cout << "Start check aspect" << std::endl;
   ierr = CheckAspectRatio(0.125, nx, ny, nz, "local problem", rank==0);
+  std::cout << "End check aspect" << std::endl;
   if (ierr)
     return ierr;
 
@@ -114,36 +118,45 @@ int main(int argc, char * argv[]) {
   /////////////////////////
 
 #ifdef HPCG_DEBUG
-  double t1 = mytimer();
+  double t1 = 0;
 #endif
 
   // Construct the geometry and linear system
   Geometry * geom = new Geometry;
+  std::cout << "Start Generate geometry" << std::endl;
   GenerateGeometry(size, rank, params.numThreads, params.pz, params.zl, params.zu, nx, ny, nz, params.npx, params.npy, params.npz, geom);
+  std::cout << "End Generate geometry" << std::endl;
 
+  std::cout << "Start Aspect2" << std::endl;
   ierr = CheckAspectRatio(0.125, geom->npx, geom->npy, geom->npz, "process grid", rank==0);
+  std::cout << "End Aspect2" << std::endl;
   if (ierr)
     return ierr;
 
   // Use this array for collecting timing information
   std::vector< double > times(10,0.0);
 
-  double setup_time = mytimer();
+  double setup_time = 0;
 
   SparseMatrix A;
+  std::cout << "Start init sparse matrix" << std::endl;
   InitializeSparseMatrix(A, geom);
+  std::cout << "End init sparse matrix" << std::endl;
 
   Vector b, x, xexact;
-  GenerateProblem(A, &b, &x, &xexact);
+  GenerateProblem(&A, &b, &x, &xexact);
+  std::cout << "End generate problem" << std::endl;
   SetupHalo(A);
+  std::cout << "End setup halo" << std::endl;
   int numberOfMgLevels = 4; // Number of levels including first
   SparseMatrix * curLevelMatrix = &A;
   for (int level = 1; level< numberOfMgLevels; ++level) {
     GenerateCoarseProblem(*curLevelMatrix);
+    std::cout << "End generate coarse problem" << std::endl;
     curLevelMatrix = curLevelMatrix->Ac; // Make the just-constructed coarse grid the next level
   }
 
-  setup_time = mytimer() - setup_time; // Capture total time of setup
+  setup_time = 0; // Capture total time of setup
   times[9] = setup_time; // Save it for reporting
 
   curLevelMatrix = &A;
@@ -152,6 +165,7 @@ int main(int argc, char * argv[]) {
   Vector * curxexact = &xexact;
   for (int level = 0; level< numberOfMgLevels; ++level) {
      CheckProblem(*curLevelMatrix, curb, curx, curxexact);
+     std::cout << "End check problem" << std::endl;
      curLevelMatrix = curLevelMatrix->Ac; // Make the nextcoarse grid the next level
      curb = 0; // No vectors after the top level
      curx = 0;
@@ -162,7 +176,11 @@ int main(int argc, char * argv[]) {
   CGData data;
   InitializeSparseCGData(A, data);
 
-
+  data.r.values = new double[262144];
+  data.z.values = new double[262144];
+  data.p.values = new double[262144];
+  data.Ap.values = new double[262144];
+  std::cout << "End init cgsparse" << std::endl;
 
   ////////////////////////////////////
   // Reference SpMV+MG Timing Phase //
@@ -175,7 +193,9 @@ int main(int argc, char * argv[]) {
 
   Vector x_overlap, b_computed;
   InitializeVector(x_overlap, ncol); // Overlapped copy of x vector
+  x_overlap.values = new double[262144];
   InitializeVector(b_computed, nrow); // Computed RHS vector
+  b_computed.values = new double[262144];
 
 
   // Record execution time of reference SpMV and MG kernels for reporting times
@@ -184,16 +204,19 @@ int main(int argc, char * argv[]) {
 
   int numberOfCalls = 10;
   if (quickPath) numberOfCalls = 1; //QuickPath means we do on one call of each block of repetitive code
-  double t_begin = mytimer();
+  double t_begin = 0;
   for (int i=0; i< numberOfCalls; ++i) {
+    std::cout << "Call " << i << " of " << numberOfCalls << std::endl;
     ierr = ComputeSPMV_ref(A, x_overlap, b_computed); // b_computed = A*x_overlap
-    if (ierr) HPCG_fout << "Error in call to SpMV: " << ierr << ".\n" << endl;
+    std::cout << "End of compSPMV" << std::endl;
+    if (ierr) std::cout << "Error in call to SpMV: " << ierr << ".\n" << endl;
     ierr = ComputeMG_ref(A, b_computed, x_overlap); // b_computed = Minv*y_overlap
-    if (ierr) HPCG_fout << "Error in call to MG: " << ierr << ".\n" << endl;
+    std::cout << "End of compMG" << std::endl;
+    if (ierr) std::cout << "Error in call to MG: " << ierr << ".\n" << endl;
   }
-  times[8] = (mytimer() - t_begin)/((double) numberOfCalls);  // Total time divided by number of calls.
+  times[8] = (0 - t_begin)/((double) numberOfCalls);  // Total time divided by number of calls.
 #ifdef HPCG_DEBUG
-  if (rank==0) HPCG_fout << "Total SpMV+MG timing phase execution time in main (sec) = " << mytimer() - t1 << endl;
+  if (rank==0) std::cout << "Total SpMV+MG timing phase execution time in main (sec) = " << mytimer() - t1 << endl;
 #endif
 
   ///////////////////////////////
@@ -201,7 +224,7 @@ int main(int argc, char * argv[]) {
   ///////////////////////////////
 
 #ifdef HPCG_DEBUG
-  t1 = mytimer();
+  t1 = 0;
 #endif
   int global_failure = 0; // assume all is well: no failures
 
@@ -217,21 +240,25 @@ int main(int argc, char * argv[]) {
   double tolerance = 0.0; // Set tolerance to zero to make all runs do maxIters iterations
   int err_count = 0;
   for (int i=0; i< numberOfCalls; ++i) {
+    std::cout << "Call " << i << " of " << numberOfCalls << " of refCG timing" << std::endl;
     ZeroVector(x);
     ierr = CG_ref( A, data, b, x, refMaxIters, tolerance, niters, normr, normr0, &ref_times[0], true);
+    std::cout << "End of CG_ref" << std::endl;
     if (ierr) ++err_count; // count the number of errors in CG
     totalNiters_ref += niters;
   }
-  if (rank == 0 && err_count) HPCG_fout << err_count << " error(s) in call(s) to reference CG." << endl;
+  if (rank == 0 && err_count) std::cout << err_count << " error(s) in call(s) to reference CG." << endl;
   double refTolerance = normr / normr0;
 
   // Call user-tunable set up function.
-  double t7 = mytimer();
+  double t7 = 0;
+  std::cout << "Start optimizeProblem" << std::endl;
   OptimizeProblem(A, data, b, x, xexact);
-  t7 = mytimer() - t7;
+  std::cout << "End optimizeProblem" << std::endl;
+  t7 = 0;
   times[7] = t7;
 #ifdef HPCG_DEBUG
-  if (rank==0) HPCG_fout << "Total problem setup time in main (sec) = " << mytimer() - t1 << endl;
+  if (rank==0) std::cout << "Total problem setup time in main (sec) = " << mytimer() - t1 << endl;
 #endif
 
 #ifdef HPCG_DETAILED_DEBUG
@@ -244,21 +271,23 @@ int main(int argc, char * argv[]) {
   //////////////////////////////
 
 #ifdef HPCG_DEBUG
-  t1 = mytimer();
+  t1 = 0;
 #endif
   TestCGData testcg_data;
   testcg_data.count_pass = testcg_data.count_fail = 0;
   TestCG(A, data, b, x, testcg_data);
+  std::cout << "End of TestCG" << std::endl;
 
   TestSymmetryData testsymmetry_data;
   TestSymmetry(A, b, xexact, testsymmetry_data);
+  std::cout << "End of TestSymmetry" << std::endl;
 
 #ifdef HPCG_DEBUG
-  if (rank==0) HPCG_fout << "Total validation (TestCG and TestSymmetry) execution time in main (sec) = " << mytimer() - t1 << endl;
+  if (rank==0) std::cout << "Total validation (TestCG and TestSymmetry) execution time in main (sec) = " << mytimer() - t1 << endl;
 #endif
 
 #ifdef HPCG_DEBUG
-  t1 = mytimer();
+  t1 = 0;
 #endif
 
   //////////////////////////////
@@ -279,9 +308,11 @@ int main(int argc, char * argv[]) {
 
   // Compute the residual reduction and residual count for the user ordering and optimized kernels.
   for (int i=0; i< numberOfCalls; ++i) {
+    std::cout << "Call " << i << " of " << numberOfCalls << " of OptimizedCG setup" << std::endl;
     ZeroVector(x); // start x at all zeros
     double last_cummulative_time = opt_times[0];
     ierr = CG( A, data, b, x, optMaxIters, refTolerance, niters, normr, normr0, &opt_times[0], true);
+    std::cout << "End of CG" << std::endl;
     if (ierr) ++err_count; // count the number of errors in CG
     if (normr / normr0 > refTolerance) ++tolerance_failures; // the number of failures to reduce residual
 
@@ -299,11 +330,11 @@ int main(int argc, char * argv[]) {
 #endif
 
 
-  if (rank == 0 && err_count) HPCG_fout << err_count << " error(s) in call(s) to optimized CG." << endl;
+  if (rank == 0 && err_count) std::cout << err_count << " error(s) in call(s) to optimized CG." << endl;
   if (tolerance_failures) {
     global_failure = 1;
     if (rank == 0)
-      HPCG_fout << "Failed to reduce the residual " << tolerance_failures << " times." << endl;
+      std::cout << "Failed to reduce the residual " << tolerance_failures << " times." << endl;
   }
 
   ///////////////////////////////
@@ -318,8 +349,8 @@ int main(int argc, char * argv[]) {
 
 #ifdef HPCG_DEBUG
   if (rank==0) {
-    HPCG_fout << "Projected running time: " << total_runtime << " seconds" << endl;
-    HPCG_fout << "Number of CG sets: " << numberOfCgSets << endl;
+    std::cout << "Projected running time: " << total_runtime << " seconds" << endl;
+    std::cout << "Number of CG sets: " << numberOfCgSets << endl;
   }
 #endif
 
@@ -329,13 +360,15 @@ int main(int argc, char * argv[]) {
   double optTolerance = 0.0;  // Force optMaxIters iterations
   TestNormsData testnorms_data;
   testnorms_data.samples = numberOfCgSets;
-  testnorms_data.values = new double[numberOfCgSets];
+  testnorms_data.values = new double[1];
 
   for (int i=0; i< numberOfCgSets; ++i) {
+    std::cout << "CGset " << i << " of " << numberOfCgSets << std::endl;
     ZeroVector(x); // Zero out x
     ierr = CG( A, data, b, x, optMaxIters, optTolerance, niters, normr, normr0, &times[0], true);
-    if (ierr) HPCG_fout << "Error in call to CG: " << ierr << ".\n" << endl;
-    if (rank==0) HPCG_fout << "Call [" << i << "] Scaled Residual [" << normr/normr0 << "]" << endl;
+    std::cout << "End of CG" << std::endl;
+    if (ierr) std::cout << "Error in call to CG: " << ierr << ".\n" << endl;
+    if (rank==0) std::cout << "Call [" << i << "] Scaled Residual [" << normr/normr0 << "]" << endl;
     testnorms_data.values[i] = normr/normr0; // Record scaled residual from this run
   }
 
@@ -344,12 +377,15 @@ int main(int argc, char * argv[]) {
 #ifdef HPCG_DEBUG
   double residual = 0;
   ierr = ComputeResidual(A.localNumberOfRows, x, xexact, residual);
-  if (ierr) HPCG_fout << "Error in call to compute_residual: " << ierr << ".\n" << endl;
-  if (rank==0) HPCG_fout << "Difference between computed and exact  = " << residual << ".\n" << endl;
+  std::cout << "End of residual" << std::endl;
+  if (ierr) std::cout << "Error in call to compute_residual: " << ierr << ".\n" << endl;
+  if (rank==0) std::cout << "Difference between computed and exact  = " << residual << ".\n" << endl;
 #endif
 
   // Test Norm Results
+  std::cout << "Begin test norms" << std::endl;
   ierr = TestNorms(testnorms_data);
+  std::cout << "End test norms" << std::endl;
 
   ////////////////////
   // Report Results //
@@ -357,20 +393,6 @@ int main(int argc, char * argv[]) {
 
   // Report results to YAML file
   ReportResults(A, numberOfMgLevels, numberOfCgSets, refMaxIters, optMaxIters, &times[0], testcg_data, testsymmetry_data, testnorms_data, global_failure, quickPath);
-
-  // Clean up
-  DeleteMatrix(A); // This delete will recursively delete all coarse grid data
-  DeleteCGData(data);
-  DeleteVector(x);
-  DeleteVector(b);
-  DeleteVector(xexact);
-  DeleteVector(x_overlap);
-  DeleteVector(b_computed);
-  delete [] testnorms_data.values;
-
-
-
-  HPCG_Finalize();
 
   // Finish up
 #ifndef HPCG_NO_MPI

@@ -45,7 +45,6 @@ typedef struct Vector_STRUCT Vector;
  */
 inline void InitializeVector(Vector & v, local_int_t localLength) {
   v.localLength = localLength;
-  posix_memalign((void**)&v.values, 16, sizeof(double)*localLength);
   v.optimizationData = 0;
   return;
 }

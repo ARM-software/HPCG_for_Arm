@@ -33,6 +33,7 @@ using std::endl;
 #endif
 #include <cassert>
 
+#include <iostream>
 #include "CheckProblem.hpp"
 
 
@@ -86,7 +87,7 @@ void CheckProblem(SparseMatrix & A, Vector * b, Vector * x, Vector * xexact) {
         global_int_t currentGlobalRow = giz*gnx*gny+giy*gnx+gix;
         assert(A.localToGlobalMap[currentLocalRow] == currentGlobalRow);
 #ifdef HPCG_DETAILED_DEBUG
-        HPCG_fout << " rank, globalRow, localRow = " << A.geom->rank << " " << currentGlobalRow << " " << A.globalToLocalMap[currentGlobalRow] << endl;
+        std::cout << " rank, globalRow, localRow = " << A.geom->rank << " " << currentGlobalRow << " " << A.globalToLocalMap[currentGlobalRow] << endl;
 #endif
         char numberOfNonzerosInRow = 0;
         double * currentValuePointer = A.matrixValues[currentLocalRow]; // Pointer to current value in current row
@@ -124,7 +125,7 @@ void CheckProblem(SparseMatrix & A, Vector * b, Vector * x, Vector * xexact) {
     } // end iy loop
   } // end iz loop
 #ifdef HPCG_DETAILED_DEBUG
-  HPCG_fout     << "Process " << A.geom->rank << " of " << A.geom->size <<" has " << localNumberOfRows    << " rows."     << endl
+  std::cout     << "Process " << A.geom->rank << " of " << A.geom->size <<" has " << localNumberOfRows    << " rows."     << endl
       << "Process " << A.geom->rank << " of " << A.geom->size <<" has " << localNumberOfNonzeros<< " nonzeros." <<endl;
 #endif
 

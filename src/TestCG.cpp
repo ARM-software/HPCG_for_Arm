@@ -57,8 +57,11 @@ int TestCG(SparseMatrix & A, CGData & data, Vector & b, Vector & x, TestCGData &
   // Temporary storage for holding original diagonal and RHS
   Vector origDiagA, exaggeratedDiagA, origB;
   InitializeVector(origDiagA, A.localNumberOfRows);
+  origDiagA.values = new double[262144];
   InitializeVector(exaggeratedDiagA, A.localNumberOfRows);
+  exaggeratedDiagA.values = new double[262144];
   InitializeVector(origB, A.localNumberOfRows);
+  origB.values = new double[262144];
   CopyMatrixDiagonal(A, origDiagA);
   CopyVector(origDiagA, exaggeratedDiagA);
   CopyVector(b, origB);
@@ -94,7 +97,7 @@ int TestCG(SparseMatrix & A, CGData & data, Vector & b, Vector & x, TestCGData &
     for (int i=0; i< numberOfCgCalls; ++i) {
       ZeroVector(x); // Zero out x
       int ierr = CG(A, data, b, x, maxIters, tolerance, niters, normr, normr0, &times[0], k==1);
-      if (ierr) HPCG_fout << "Error in call to CG: " << ierr << ".\n" << endl;
+      if (ierr) std::cout << "Error in call to CG: " << ierr << ".\n" << endl;
       if (niters <= expected_niters) {
         ++testcg_data.count_pass;
       } else {
@@ -103,9 +106,9 @@ int TestCG(SparseMatrix & A, CGData & data, Vector & b, Vector & x, TestCGData &
       if (k==0 && niters>testcg_data.niters_max_no_prec) testcg_data.niters_max_no_prec = niters; // Keep track of largest iter count
       if (k==1 && niters>testcg_data.niters_max_prec) testcg_data.niters_max_prec = niters; // Same for preconditioned run
       if (A.geom->rank==0) {
-        HPCG_fout << "Call [" << i << "] Number of Iterations [" << niters <<"] Scaled Residual [" << normr/normr0 << "]" << endl;
+          std::cout << "Call [" << i << "] Number of Iterations [" << niters <<"] Scaled Residual [" << normr/normr0 << "]" << endl;
         if (niters > expected_niters)
-          HPCG_fout << " Expected " << expected_niters << " iterations.  Performed " << niters << "." << endl;
+          std::cout << " Expected " << expected_niters << " iterations.  Performed " << niters << "." << endl;
       }
     }
   }

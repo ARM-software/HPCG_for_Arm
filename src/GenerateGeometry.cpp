@@ -31,6 +31,7 @@
 using std::endl;
 
 #endif
+#include <iostream>
 
 /*!
   Computes the factorization of the total number of processes into a
@@ -89,7 +90,7 @@ void GenerateGeometry(int size, int rank, int numThreads,
 
 #ifdef HPCG_DEBUG
   if (rank==0)
-    HPCG_fout   << "size = "<< size << endl
+    std::cout   << "size = "<< size << endl
         << "nx  = " << nx << endl
         << "ny  = " << ny << endl
         << "nz  = " << nz << endl
@@ -97,7 +98,7 @@ void GenerateGeometry(int size, int rank, int numThreads,
         << "npy = " << npy << endl
         << "npz = " << npz << endl;
 
-  HPCG_fout    << "For rank = " << rank << endl
+  std::cout    << "For rank = " << rank << endl
       << "ipx = " << ipx << endl
       << "ipy = " << ipy << endl
       << "ipz = " << ipz << endl;

@@ -129,11 +129,11 @@ int ComputeDotProduct(const local_int_t n, const Vector & x, const Vector & y,
 
 #ifndef HPCG_NO_MPI
 	// Use MPI's reduce function to collect all partial sums
-	double t0 = mytimer();
+	double t0 = 0.0;
 	double global_result = 0.0;
 	MPI_Allreduce(&local_result, &global_result, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 	result = global_result;
-	time_allreduce += mytimer() - t0;
+	time_allreduce += 0.0;
 #else //HPCG_NO_MPI
 	time_allreduce += 0.0;
 	result = local_result;

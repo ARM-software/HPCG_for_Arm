@@ -121,10 +121,6 @@ OutputFile::generate(void) {
   string filename = name + "_" + version + "_";
   filename += string(sdate) + ".txt";
 
-  ofstream myfile(filename.c_str());
-  myfile << result;
-  myfile.close();
-
   return result;
 }
 

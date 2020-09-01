@@ -49,6 +49,8 @@
 #include "GenerateProblem.hpp"
 #include "GenerateProblem_ref.hpp"
 
+#include <iostream>
+
 
 /*!
   Routine to generate a sparse matrix, right hand side, initial guess, and exact solution.
@@ -61,18 +63,18 @@
   @see GenerateGeometry
   */
 
-void GenerateProblem(SparseMatrix & A, Vector * b, Vector * x, Vector * xexact) {
+void GenerateProblem(SparseMatrix * A, Vector * b, Vector * x, Vector * xexact) {
 	// Make local copies of geometry information.  Use global_int_t since the RHS products in the calculations
 	// below may result in global range values.
-	global_int_t nx = A.geom->nx;
-	global_int_t ny = A.geom->ny;
-	global_int_t nz = A.geom->nz;
-	global_int_t gnx = A.geom->gnx;
-	global_int_t gny = A.geom->gny;
-	global_int_t gnz = A.geom->gnz;
-	global_int_t gix0 = A.geom->gix0;
-	global_int_t giy0 = A.geom->giy0;
-	global_int_t giz0 = A.geom->giz0;
+	global_int_t nx = A->geom->nx;
+	global_int_t ny = A->geom->ny;
+	global_int_t nz = A->geom->nz;
+	global_int_t gnx = A->geom->gnx;
+	global_int_t gny = A->geom->gny;
+	global_int_t gnz = A->geom->gnz;
+	global_int_t gix0 = A->geom->gix0;
+	global_int_t giy0 = A->geom->giy0;
+	global_int_t giz0 = A->geom->giz0;
 
 	local_int_t localNumberOfRows = nx*ny*nz; // This is the size of our subblock
 	// If this assert fails, it most likely means that the local_int_t is set to int and should be set to long long
@@ -84,45 +86,38 @@ void GenerateProblem(SparseMatrix & A, Vector * b, Vector * x, Vector * xexact) 
 	assert(totalNumberOfRows>0); // Throw an exception of the number of rows is less than zero (can happen if int overflow)
 
 	// Allocate arrays that are of length localNumberOfRows
-	char * nonzerosInRow; posix_memalign((void**)&nonzerosInRow, 16, sizeof(char)*localNumberOfRows);
-	global_int_t ** mtxIndG; posix_memalign((void**)&mtxIndG, 16, sizeof(global_int_t*)*localNumberOfRows);
-	local_int_t ** mtxIndL; posix_memalign((void**)&mtxIndL, 16, sizeof(local_int_t*)*localNumberOfRows);
-	double ** matrixValues; posix_memalign((void**)&matrixValues, 16, sizeof(double*)*localNumberOfRows);
-	double ** matrixDiagonal; posix_memalign((void**)&matrixDiagonal, 16, sizeof(double*)*localNumberOfRows);
+	char * nonzerosInRow = new char[262144];
 
-	if (b!=0) InitializeVector(*b, localNumberOfRows);
-	if (x!=0) InitializeVector(*x, localNumberOfRows);
-	if (xexact!=0) InitializeVector(*xexact, localNumberOfRows);
+	global_int_t ** mtxIndG = new global_int_t*[262144];
+    for ( local_int_t i = 0; i < 262144; i++ ) mtxIndG[i] = new global_int_t[27];
+
+	local_int_t ** mtxIndL = new local_int_t*[262144];
+    for ( local_int_t i = 0; i < 262144; i++ ) mtxIndL[i] = new local_int_t[27];
+
+	double ** matrixValues = new double*[262144];
+    for ( local_int_t i = 0; i < 262144; i++ ) matrixValues[i] = new double[27];
+
+	double ** matrixDiagonal = new double*[262144];
+
+	if (b!=0) {
+        InitializeVector(*b, localNumberOfRows);
+        b->values = new double[262144];
+    }
+	if (x!=0) {
+        InitializeVector(*x, localNumberOfRows);
+        x->values = new double[262144];
+    }
+	if (xexact!=0) {
+        InitializeVector(*xexact, localNumberOfRows);
+        xexact->values = new double[262144];
+    }
 	double * bv = 0;
 	double * xv = 0;
 	double * xexactv = 0;
 	if (b!=0) bv = b->values; // Only compute exact solution if requested
 	if (x!=0) xv = x->values; // Only compute exact solution if requested
 	if (xexact!=0) xexactv = xexact->values; // Only compute exact solution if requested
-	A.localToGlobalMap.resize(localNumberOfRows);
-
-	// Use a parallel loop to do initial assignment:
-	// distributes the physical placement of arrays of pointers across the memory system
-#ifndef HPCG_NO_OPENMP
-#pragma omp parallel for
-#endif
-	for (local_int_t i=0; i< localNumberOfRows; ++i) {
-		matrixValues[i] = 0;
-		matrixDiagonal[i] = 0;
-		mtxIndG[i] = 0;
-		mtxIndL[i] = 0;
-	}
-
-	// Now allocate the arrays pointed to
-	posix_memalign((void**)&mtxIndL[0], 16, sizeof(local_int_t)*localNumberOfRows*numberOfNonzerosPerRow);
-	posix_memalign((void**)&matrixValues[0], 16, sizeof(double)*localNumberOfRows*numberOfNonzerosPerRow);
-	posix_memalign((void**)&mtxIndG[0], 16, sizeof(global_int_t)*localNumberOfRows*numberOfNonzerosPerRow);
-
-	for (local_int_t i=1; i< localNumberOfRows; ++i) {
-		mtxIndL[i] = mtxIndL[0] + i * numberOfNonzerosPerRow;
-		matrixValues[i] = matrixValues[0] + i * numberOfNonzerosPerRow;
-		mtxIndG[i] = mtxIndG[0] + i * numberOfNonzerosPerRow;
-	}
+	A->localToGlobalMap.resize(localNumberOfRows);
 
 	local_int_t localNumberOfNonzeros = 0;
 #ifndef HPCG_NO_OPENMP
@@ -143,11 +138,11 @@ void GenerateProblem(SparseMatrix & A, Vector * b, Vector * x, Vector * xexact) 
 		// C++ std::map is not threadsafe for writing, neither std::unordered_map is threadsafe.
 		// So, we need to protect the following write
 		#pragma omp critical (write_map)
-		A.globalToLocalMap[currentGlobalRow] = currentLocalRow;
-		A.localToGlobalMap[currentLocalRow] = currentGlobalRow;
+		A->globalToLocalMap[currentGlobalRow] = currentLocalRow;
+		A->localToGlobalMap[currentLocalRow] = currentGlobalRow;
 
 #ifdef HPCG_DETAILED_DEBUG
-		HPCG_fout << " rank, globalRow, localRow = " << A.geom->rank << " " << currentGlobalRow << " " << A.globalToLocalMap[currentGlobalRow] << endl;
+		std::cout << " rank, globalRow, localRow = " << A.geom->rank << " " << currentGlobalRow << " " << A.globalToLocalMap[currentGlobalRow] << endl;
 #endif
 
 		char numberOfNonzerosInRow = 0;
@@ -197,7 +192,7 @@ void GenerateProblem(SparseMatrix & A, Vector * b, Vector * x, Vector * xexact) 
 	}
 
 #ifdef HPCG_DETAILED_DEBUG
-	HPCG_fout     << "Process " << A.geom->rank << " of " << A.geom->size <<" has " << localNumberOfRows    << " rows."     << endl
+	std::cout     << "Process " << A.geom->rank << " of " << A.geom->size <<" has " << localNumberOfRows    << " rows."     << endl
 		<< "Process " << A.geom->rank << " of " << A.geom->size <<" has " << localNumberOfNonzeros<< " nonzeros." <<endl;
 #endif
 
@@ -218,17 +213,17 @@ void GenerateProblem(SparseMatrix & A, Vector * b, Vector * x, Vector * xexact) 
 	// This assert is usually the first to fail as problem size increases beyond the 32-bit integer range.
 	assert(totalNumberOfNonzeros>0); // Throw an exception of the number of nonzeros is less than zero (can happen if int overflow)
 
-	A.title = 0;
-	A.totalNumberOfRows = totalNumberOfRows;
-	A.totalNumberOfNonzeros = totalNumberOfNonzeros;
-	A.localNumberOfRows = localNumberOfRows;
-	A.localNumberOfColumns = localNumberOfRows;
-	A.localNumberOfNonzeros = localNumberOfNonzeros;
-	A.nonzerosInRow = nonzerosInRow;
-	A.mtxIndG = mtxIndG;
-	A.mtxIndL = mtxIndL;
-	A.matrixValues = matrixValues;
-	A.matrixDiagonal = matrixDiagonal;
+	A->title = 0;
+	A->totalNumberOfRows = totalNumberOfRows;
+	A->totalNumberOfNonzeros = totalNumberOfNonzeros;
+	A->localNumberOfRows = localNumberOfRows;
+	A->localNumberOfColumns = localNumberOfRows;
+	A->localNumberOfNonzeros = localNumberOfNonzeros;
+	A->nonzerosInRow = nonzerosInRow;
+	A->mtxIndG = mtxIndG;
+	A->mtxIndL = mtxIndL;
+	A->matrixValues = matrixValues;
+	A->matrixDiagonal = matrixDiagonal;
 
 	return;
 }

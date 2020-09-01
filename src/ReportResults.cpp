@@ -54,6 +54,7 @@ using std::endl;
 
 #include "hpcg.hpp"
 #endif
+#include <iostream>
 
 /*!
  Creates a YAML file and writes the information about the HPCG run, its results, and validity.
@@ -149,7 +150,7 @@ void ReportResults(const SparseMatrix & A, int numberOfMgLevels, int numberOfCgS
 
     double fnnz_Af = Af->totalNumberOfNonzeros;
     double fnrow_Af = Af->totalNumberOfRows;
-    fnreads_precond += fniters*(2.0*fnnz_Af*(sizeof(double)+sizeof(local_int_t)) + fnrow_Af*sizeof(double));; // One symmetric GS sweep at the coarsest level
+    fnreads_precond += fniters*(2.0*fnnz_Af*(sizeof(double)+sizeof(local_int_t)) + fnrow_Af*sizeof(double)); // One symmetric GS sweep at the coarsest level
     fnwrites_precond += fniters*fnrow_Af*sizeof(double); // One symmetric GS sweep at the coarsest level
     double fnreads = fnreads_ddot+fnreads_waxpby+fnreads_sparsemv+fnreads_precond;
     double fnwrites = fnwrites_ddot+fnwrites_waxpby+fnwrites_sparsemv+fnwrites_precond;
@@ -231,215 +232,208 @@ void ReportResults(const SparseMatrix & A, int numberOfMgLevels, int numberOfCgS
     // Instantiate YAML document
 	char execConf[128];
 	char hostname[128];
-	gethostname(hostname, 64);
-	sprintf(execConf, "%s-%dranks-%dthreads", hostname, A.geom->size, A.geom->numThreads);
-	OutputFile doc(execConf, "HPCG-Benchmark_3.0");
-    doc.add("Release date", "November 11, 2015");
+    std::cout << "HPCG-Benchmark_3.0" << std::endl;
+    std::cout << "Release date " << "November 11, 2015" << std::endl;
 
-    doc.add("Machine Summary","");
-    doc.get("Machine Summary")->add("Distributed Processes",A.geom->size);
-    doc.get("Machine Summary")->add("Threads per processes",A.geom->numThreads);
+    std::cout << "Machine Summary" << std::endl;
+    std::cout << "Machine Summary " << "Distributed Processes " << A.geom->size << std::endl;
+    std::cout << "Machine Summary " << "Threads per processes " << A.geom->numThreads << std::endl;
 
-    doc.add("Global Problem Dimensions","");
-    doc.get("Global Problem Dimensions")->add("Global nx",A.geom->gnx);
-    doc.get("Global Problem Dimensions")->add("Global ny",A.geom->gny);
-    doc.get("Global Problem Dimensions")->add("Global nz",A.geom->gnz);
+    std::cout << "Global Problem Dimensions" << std::endl;
+    std::cout << "Global Problem Dimensions " << "Global nx " << A.geom->gnx << std::endl;
+    std::cout << "Global Problem Dimensions " << "Global ny " << A.geom->gny << std::endl;
+    std::cout << "Global Problem Dimensions " << "Global nz " << A.geom->gnz << std::endl;
 
-    doc.add("Processor Dimensions","");
-    doc.get("Processor Dimensions")->add("npx",A.geom->npx);
-    doc.get("Processor Dimensions")->add("npy",A.geom->npy);
-    doc.get("Processor Dimensions")->add("npz",A.geom->npz);
+    std::cout << "Processor Dimensions" << std::endl;
+    std::cout << "Processor Dimensions " << "npx " << A.geom->npx << std::endl;
+    std::cout << "Processor Dimensions " << "npy " << A.geom->npy << std::endl;
+    std::cout << "Processor Dimensions " << "npz " << A.geom->npz << std::endl;
 
-    doc.add("Local Domain Dimensions","");
-    doc.get("Local Domain Dimensions")->add("nx",A.geom->nx);
-    doc.get("Local Domain Dimensions")->add("ny",A.geom->ny);
+    std::cout << "Local Domain Dimensions" << std::endl;
+    std::cout << "Local Domain Dimensions " << "nx " << A.geom->nx << std::endl;
+    std::cout << "Local Domain Dimensions " << "ny " << A.geom->ny << std::endl;
 
     int ipartz_ids = 0;
     for (int i=0; i< A.geom->npartz; ++i) {
-      doc.get("Local Domain Dimensions")->add("Lower ipz", ipartz_ids);
-      doc.get("Local Domain Dimensions")->add("Upper ipz", A.geom->partz_ids[i]-1);
-      doc.get("Local Domain Dimensions")->add("nz",A.geom->partz_nz[i]);
+        std::cout << "Local Domain Dimensions " << "Lower ipz " << ipartz_ids << std::endl;
+        std::cout << "Local Domain Dimensions " << "Upper ipz " << A.geom->partz_ids[i]-1 << std::endl;
+        std::cout << "Local Domain Dimensions " << "nz " << A.geom->partz_nz[i] << std::endl;
       ipartz_ids = A.geom->partz_ids[i];
     }
 
 
-    doc.add("########## Problem Summary  ##########","");
+    std::cout << "########## Problem Summary  ##########" << std::endl;
 
-    doc.add("Setup Information","");
-    doc.get("Setup Information")->add("Setup Time",times[9]);
+    std::cout << "Setup Information" << std::endl;
+    std::cout << "Setup Information " << "Setup Time " << times[9] << std::endl;
 
-    doc.add("Linear System Information","");
-    doc.get("Linear System Information")->add("Number of Equations",A.totalNumberOfRows);
-    doc.get("Linear System Information")->add("Number of Nonzero Terms",A.totalNumberOfNonzeros);
+    std::cout << "Linear System Information" << std::endl;
+    std::cout << "Linear System Information " << "Number of Equations " << A.totalNumberOfRows << std::endl;
+    std::cout << "Linear System Information " << "Number of Nonzero Terms " << A.totalNumberOfNonzeros << std::endl;
 
-    doc.add("Multigrid Information","");
-    doc.get("Multigrid Information")->add("Number of coarse grid levels", numberOfMgLevels-1);
+    std::cout << "Multigrid Information" << std::endl;
+    std::cout << "Multigrid Information " << "Number of coarse grid levels " << numberOfMgLevels-1 << std::endl;
     Af = &A;
-    doc.get("Multigrid Information")->add("Coarse Grids","");
+    std::cout << "Multigrid Informatioan " << "Coarse Grids" << std::endl;
     for (int i=1; i<numberOfMgLevels; ++i) {
-      doc.get("Multigrid Information")->get("Coarse Grids")->add("Grid Level",i);
-      doc.get("Multigrid Information")->get("Coarse Grids")->add("Number of Equations",Af->Ac->totalNumberOfRows);
-      doc.get("Multigrid Information")->get("Coarse Grids")->add("Number of Nonzero Terms",Af->Ac->totalNumberOfNonzeros);
-      doc.get("Multigrid Information")->get("Coarse Grids")->add("Number of Presmoother Steps",Af->mgData->numberOfPresmootherSteps);
-      doc.get("Multigrid Information")->get("Coarse Grids")->add("Number of Postsmoother Steps",Af->mgData->numberOfPostsmootherSteps);
+        std::cout << "Multigrid Information " << "Coarse Grids " << "Grid Level" << i << std::endl;
+        std::cout << "Multigrid Information " << "Coarse Grids " << "Number of Equations " << Af->Ac->totalNumberOfRows << std::endl;
+        std::cout << "Multigrid Information " << "Coarse Grids " << "Number of Nonzero Terms " << Af->Ac->totalNumberOfNonzeros << std::endl;
+        std::cout << "Multigrid Information " << "Coarse Grids " << "Number of Presmoother Steps " << Af->mgData->numberOfPresmootherSteps << std::endl;
+        std::cout << "Multigrid Information " << "Coarse Grids " << "Number of Postsmoother Steps " << Af->mgData->numberOfPostsmootherSteps << std::endl;
       Af = Af->Ac;
     }
 
-    doc.add("########## Memory Use Summary  ##########","");
+    std::cout << "########## Memory Use Summary  ##########" << std::endl;
 
-    doc.add("Memory Use Information","");
-    doc.get("Memory Use Information")->add("Total memory used for data (Gbytes)",fnbytes/1000000000.0);
-    doc.get("Memory Use Information")->add("Memory used for OptimizeProblem data (Gbytes)",fnbytes_OptimizedProblem/1000000000.0);
-    doc.get("Memory Use Information")->add("Bytes per equation (Total memory / Number of Equations)",fnbytesPerEquation);
+    std::cout << "Memory Use Information" << std::endl;
+    std::cout << "Memory Use Information " << "Total memory used for data (Gbytes) " << fnbytes/1000000000.0 << std::endl;
+    std::cout << "Memory Use Information " << "Memory used for OptimizeProblem data (Gbytes) " << fnbytes_OptimizedProblem/1000000000.0 << std::endl;
+    std::cout << "Memory Use Information " << "Bytes per equation (Total memory / Number of Equations) " << fnbytesPerEquation << std::endl;
 
-    doc.get("Memory Use Information")->add("Memory used for linear system and CG (Gbytes)",fnbytesPerLevel[0]/1000000000.0);
+    std::cout << "Memory Use Information " << "Memory used for linear system and CG (Gbytes) " << fnbytesPerLevel[0]/1000000000.0 << std::endl;
 
-    doc.get("Memory Use Information")->add("Coarse Grids","");
+    std::cout << "Memory Use Information " << "Coarse Grids" << std::endl;
     for (int i=1; i<numberOfMgLevels; ++i) {
-      doc.get("Memory Use Information")->get("Coarse Grids")->add("Grid Level",i);
-      doc.get("Memory Use Information")->get("Coarse Grids")->add("Memory used",fnbytesPerLevel[i]/1000000000.0);
+        std::cout << "Memory Use Information " << "Coarse Grids " << "Grid Level " << i << std::endl;
+        std::cout << "Memory Use Information " << "Coarse Grids " << "Memory used " << fnbytesPerLevel[i]/1000000000.0 << std::endl;
     }
 
-    doc.add("########## V&V Testing Summary  ##########","");
-    doc.add("Spectral Convergence Tests","");
+    std::cout << "########## V&V Testing Summary  ##########" << std::endl;
+    std::cout << "Spectral Convergence Tests" << std::endl;
     if (testcg_data.count_fail==0)
-      doc.get("Spectral Convergence Tests")->add("Result", "PASSED");
+      std::cout << "Spectral Convergence Tests " << "Result " << "PASSED" << std::endl;
     else
-      doc.get("Spectral Convergence Tests")->add("Result", "FAILED");
-    doc.get("Spectral Convergence Tests")->add("Unpreconditioned","");
-    doc.get("Spectral Convergence Tests")->get("Unpreconditioned")->add("Maximum iteration count", testcg_data.niters_max_no_prec);
-    doc.get("Spectral Convergence Tests")->get("Unpreconditioned")->add("Expected iteration count", testcg_data.expected_niters_no_prec);
-    doc.get("Spectral Convergence Tests")->add("Preconditioned","");
-    doc.get("Spectral Convergence Tests")->get("Preconditioned")->add("Maximum iteration count", testcg_data.niters_max_prec);
-    doc.get("Spectral Convergence Tests")->get("Preconditioned")->add("Expected iteration count", testcg_data.expected_niters_prec);
+      std::cout << "Spectral Convergence Tests " << "Result " << "FAILED" << std::endl;
+    std::cout << "Spectral Convergence Tests " << "Unpreconditioned" << std::endl;
+    std::cout << "Spectral Convergence Tests " << "Unpreconditioned " << "Maximum iteration count " << testcg_data.niters_max_no_prec << std::endl;
+    std::cout << "Spectral Convergence Tests " << "Unpreconditioned " << "Expected iteration count " << testcg_data.expected_niters_no_prec << std::endl;
+    std::cout << "Spectral Convergence Tests " << "Preconditioned" << std::endl;
+    std::cout << "Spectral Convergence Tests " << "Preconditioned " << "Maximum iteration count " << testcg_data.niters_max_prec << std::endl;
+    std::cout << "Spectral Convergence Tests " << "Preconditioned " << "Expected iteration count " << testcg_data.expected_niters_prec << std::endl;
 
     const char DepartureFromSymmetry[] = "Departure from Symmetry |x'Ay-y'Ax|/(2*||x||*||A||*||y||)/epsilon";
-    doc.add(DepartureFromSymmetry,"");
+    std::cout << DepartureFromSymmetry << std::endl;
     if (testsymmetry_data.count_fail==0)
-      doc.get(DepartureFromSymmetry)->add("Result", "PASSED");
+      std::cout << DepartureFromSymmetry << "Result " << "PASSED" << std::endl;
     else
-      doc.get(DepartureFromSymmetry)->add("Result", "FAILED");
-    doc.get(DepartureFromSymmetry)->add("Departure for SpMV", testsymmetry_data.depsym_spmv);
-    doc.get(DepartureFromSymmetry)->add("Departure for MG", testsymmetry_data.depsym_mg);
+      std::cout << DepartureFromSymmetry << "Result " << "FAILED" << std::endl;
+    std::cout << DepartureFromSymmetry << "Departure for SpMV " << testsymmetry_data.depsym_spmv << std::endl;
+    std::cout << DepartureFromSymmetry << "Departure for MG " << testsymmetry_data.depsym_mg << std::endl;
 
-    doc.add("########## Iterations Summary  ##########","");
-    doc.add("Iteration Count Information","");
+    std::cout << "########## Iterations Summary  ##########" << std::endl;
+    std::cout << "Iteration Count Information" << std::endl;
     if (!global_failure)
-      doc.get("Iteration Count Information")->add("Result", "PASSED");
+      std::cout << "Iteration Count Information " << "Result " << "PASSED" << std::endl;
     else
-      doc.get("Iteration Count Information")->add("Result", "FAILED");
-    doc.get("Iteration Count Information")->add("Reference CG iterations per set", refMaxIters);
-    doc.get("Iteration Count Information")->add("Optimized CG iterations per set", optMaxIters);
-    doc.get("Iteration Count Information")->add("Total number of reference iterations", refMaxIters*numberOfCgSets);
-    doc.get("Iteration Count Information")->add("Total number of optimized iterations", optMaxIters*numberOfCgSets);
+      std::cout << "Iteration Count Information" << "Result " << "FAILED" << std::endl;
+    std::cout << "Iteration Count Information" << "Reference CG iterations per set " << refMaxIters << std::endl;
+    std::cout << "Iteration Count Information" << "Optimized CG iterations per set " << optMaxIters << std::endl;
+    std::cout << "Iteration Count Information" << "Total number of reference iterations " << refMaxIters*numberOfCgSets << std::endl;
+    std::cout << "Iteration Count Information" << "Total number of optimized iterations " << optMaxIters*numberOfCgSets << std::endl;
 
-    doc.add("########## Reproducibility Summary  ##########","");
-    doc.add("Reproducibility Information","");
+    std::cout << "########## Reproducibility Summary  ##########" << std::endl;
+    std::cout << "Reproducibility Information" << std::endl;
     if (testnorms_data.pass)
-      doc.get("Reproducibility Information")->add("Result", "PASSED");
+      std::cout << "Reproducibility Information " << "Result " << "PASSED" << std::endl;
     else
-      doc.get("Reproducibility Information")->add("Result", "FAILED");
-    doc.get("Reproducibility Information")->add("Scaled residual mean", testnorms_data.mean);
-    doc.get("Reproducibility Information")->add("Scaled residual variance", testnorms_data.variance);
+      std::cout << "Reproducibility Information " << "Result " << "FAILED" << std::endl;
+    std::cout << "Reproducibility Information " << "Scaled residual mean " << testnorms_data.mean << std::endl;
+    std::cout << "Reproducibility Information " << "Scaled residual variance " << testnorms_data.variance << std::endl;
 
-    doc.add("########## Performance Summary (times in sec) ##########","");
+    std::cout << "########## Performance Summary (times in sec) ##########" << std::endl;
 
-    doc.add("Benchmark Time Summary","");
-    doc.get("Benchmark Time Summary")->add("Optimization phase",times[7]);
-    doc.get("Benchmark Time Summary")->add("DDOT",times[1]);
-    doc.get("Benchmark Time Summary")->add("WAXPBY",times[2]);
-    doc.get("Benchmark Time Summary")->add("SpMV",times[3]);
-    doc.get("Benchmark Time Summary")->add("MG",times[5]);
-    doc.get("Benchmark Time Summary")->add("Total",times[0]);
+    std::cout << "Benchmark Time Summary" << std::endl;
+    std::cout << "Benchmark Time Summary " << "Optimization phase " << times[7] << std::endl;
+    std::cout << "Benchmark Time Summary " << "DDOT " << times[1] << std::endl;
+    std::cout << "Benchmark Time Summary " << "WAXPBY " << times[2] << std::endl;
+    std::cout << "Benchmark Time Summary " << "SpMV " << times[3] << std::endl;
+    std::cout << "Benchmark Time Summary " << "MG " << times[5] << std::endl;
+    std::cout << "Benchmark Time Summary " << "Total " << times[0] << std::endl;
 
-    doc.add("Floating Point Operations Summary","");
-    doc.get("Floating Point Operations Summary")->add("Raw DDOT",fnops_ddot);
-    doc.get("Floating Point Operations Summary")->add("Raw WAXPBY",fnops_waxpby);
-    doc.get("Floating Point Operations Summary")->add("Raw SpMV",fnops_sparsemv);
-    doc.get("Floating Point Operations Summary")->add("Raw MG",fnops_precond);
-    doc.get("Floating Point Operations Summary")->add("Total",fnops);
-    doc.get("Floating Point Operations Summary")->add("Total with convergence overhead",frefnops);
+    std::cout << "Floating Point Operations Summary" << std::endl;
+    std::cout << "Floating Point Operations Summary " << "Raw DDOT " << fnops_ddot << std::endl;
+    std::cout << "Floating Point Operations Summary " << "Raw WAXPBY " << fnops_waxpby << std::endl;
+    std::cout << "Floating Point Operations Summary " << "Raw SpMV " << fnops_sparsemv << std::endl;
+    std::cout << "Floating Point Operations Summary " << "Raw MG " << fnops_precond << std::endl;
+    std::cout << "Floating Point Operations Summary " << "Total " << fnops << std::endl;
+    std::cout << "Floating Point Operations Summary " << "Total with convergence overhead " << frefnops << std::endl;
 
-    doc.add("GB/s Summary","");
-    doc.get("GB/s Summary")->add("Raw Read B/W",fnreads/times[0]/1.0E9);
-    doc.get("GB/s Summary")->add("Raw Write B/W",fnwrites/times[0]/1.0E9);
-    doc.get("GB/s Summary")->add("Raw Total B/W",(fnreads+fnwrites)/(times[0])/1.0E9);
-    doc.get("GB/s Summary")->add("Total with convergence and optimization phase overhead",(frefnreads+frefnwrites)/(times[0]+fNumberOfCgSets*(times[7]/10.0+times[9]/10.0))/1.0E9);
+    std::cout << "GB/s Summary" << std::endl;
+    std::cout << "GB/s Summary " << "Raw Read B/W " << fnreads/times[0]/1.0E9 << std::endl;
+    std::cout << "GB/s Summary " << "Raw Write B/W " << fnwrites/times[0]/1.0E9 << std::endl;
+    std::cout << "GB/s Summary " << "Raw Total B/W " << (fnreads+fnwrites)/(times[0])/1.0E9 << std::endl;
+    std::cout << "GB/s Summary " << "Total with convergence and optimization phase overhead " << (frefnreads+frefnwrites)/(times[0]+fNumberOfCgSets*(times[7]/10.0+times[9]/10.0))/1.0E9 << std::endl;
 
 
-    doc.add("GFLOP/s Summary","");
-    doc.get("GFLOP/s Summary")->add("Raw DDOT",fnops_ddot/times[1]/1.0E9);
-    doc.get("GFLOP/s Summary")->add("Raw WAXPBY",fnops_waxpby/times[2]/1.0E9);
-    doc.get("GFLOP/s Summary")->add("Raw SpMV",fnops_sparsemv/(times[3])/1.0E9);
-    doc.get("GFLOP/s Summary")->add("Raw MG",fnops_precond/(times[5])/1.0E9);
-    doc.get("GFLOP/s Summary")->add("Raw Total",fnops/times[0]/1.0E9);
-    doc.get("GFLOP/s Summary")->add("Total with convergence overhead",frefnops/times[0]/1.0E9);
+    std::cout << "GFLOP/s Summary" << std::endl;
+    std::cout << "GFLOP/s Summary " << "Raw DDOT " << fnops_ddot/times[1]/1.0E9 << std::endl;
+    std::cout << "GFLOP/s Summary " << "Raw WAXPBY " << fnops_waxpby/times[2]/1.0E9 << std::endl;
+    std::cout << "GFLOP/s Summary " << "Raw SpMV " << fnops_sparsemv/(times[3])/1.0E9 << std::endl;
+    std::cout << "GFLOP/s Summary " << "Raw MG " << fnops_precond/(times[5])/1.0E9 << std::endl;
+    std::cout << "GFLOP/s Summary " << "Raw Total " << fnops/times[0]/1.0E9 << std::endl;
+    std::cout << "GFLOP/s Summary " << "Total with convergence overhead " << frefnops/times[0]/1.0E9 << std::endl;
     // This final GFLOP/s rating includes the overhead of problem setup and optimizing the data structures vs ten sets of 50 iterations of CG
     double totalGflops = frefnops/(times[0]+fNumberOfCgSets*(times[7]/10.0+times[9]/10.0))/1.0E9;
     double totalGflops24 = frefnops/(times[0]+fNumberOfCgSets*times[7]/10.0)/1.0E9;
-    doc.get("GFLOP/s Summary")->add("Total with convergence and optimization phase overhead",totalGflops);
+    std::cout << "GFLOP/s Summary " << "Total with convergence and optimization phase overhead " << totalGflops << std::endl;
 
-    doc.add("User Optimization Overheads","");
-    doc.get("User Optimization Overheads")->add("Optimization phase time (sec)", (times[7]));
-    doc.get("User Optimization Overheads")->add("Optimization phase time vs reference SpMV+MG time", times[7]/times[8]);
+    std::cout << "User Optimization Overheads" << std::endl;
+    std::cout << "User Optimization Overheads " << "Optimization phase time (sec) " <<  (times[7]) << std::endl;
+    std::cout << "User Optimization Overheads " << "Optimization phase time vs reference SpMV+MG time " <<  times[7]/times[8] << std::endl;
 
 #ifndef HPCG_NO_MPI
-    doc.add("DDOT Timing Variations","");
-    doc.get("DDOT Timing Variations")->add("Min DDOT MPI_Allreduce time",t4min);
-    doc.get("DDOT Timing Variations")->add("Max DDOT MPI_Allreduce time",t4max);
-    doc.get("DDOT Timing Variations")->add("Avg DDOT MPI_Allreduce time",t4avg);
+    std::cout << "DDOT Timing Variations" << "" << std::endl;
+    std::cout << "DDOT Timing Variations " << "Min DDOT MPI_Allreduce time " << t4min << std::endl;
+    std::cout << "DDOT Timing Variations " << "Max DDOT MPI_Allreduce time " << t4max << std::endl;
+    std::cout << "DDOT Timing Variations " << "Avg DDOT MPI_Allreduce time " << t4avg << std::endl;
 
     //doc.get("Sparse Operations Overheads")->add("Halo exchange time (sec)", (times[6]));
     //doc.get("Sparse Operations Overheads")->add("Halo exchange as percentage of SpMV time", (times[6])/totalSparseMVTime*100.0);
 #endif
-    doc.add("Final Summary","");
+    std::cout << "Final Summary" << std::endl;
     bool isValidRun = (testcg_data.count_fail==0) && (testsymmetry_data.count_fail==0) && (testnorms_data.pass) && (!global_failure);
 #ifdef HPCG_USE_FUSED_SYMGS_SPMV
 	isValidRun = false;
 #endif
     if (isValidRun) {
-      doc.get("Final Summary")->add("HPCG result is VALID with a GFLOP/s rating of", totalGflops);
-      doc.get("Final Summary")->add("HPCG 2.4 rating for historical reasons is", totalGflops24);
+      std::cout << "Final Summary " << "HPCG result is VALID with a GFLOP/s rating of " <<  totalGflops << std::endl;
+      std::cout << "Final Summary " << "HPCG 2.4 rating for historical reasons is " <<  totalGflops24 << std::endl;
       if (!A.isDotProductOptimized) {
-        doc.get("Final Summary")->add("Reference version of ComputeDotProduct used","Performance results are most likely suboptimal");
+        std::cout << "Final Summary " << "Reference version of ComputeDotProduct used " << "Performance results are most likely suboptimal " << std::endl;
       }
       if (!A.isSpmvOptimized) {
-        doc.get("Final Summary")->add("Reference version of ComputeSPMV used","Performance results are most likely suboptimal");
+        std::cout << "Final Summary " << "Reference version of ComputeSPMV used " << "Performance results are most likely suboptimal " << std::endl;
       }
       if (!A.isMgOptimized) {
         if (A.geom->numThreads>1)
-          doc.get("Final Summary")->add("Reference version of ComputeMG used and number of threads greater than 1","Performance results are severely suboptimal");
+          std::cout << "Final Summary " << "Reference version of ComputeMG used and number of threads greater than 1 " << "Performance results are severely suboptimal " << std::endl;
         else // numThreads ==1
-          doc.get("Final Summary")->add("Reference version of ComputeMG used","Performance results are most likely suboptimal");
+          std::cout << "Final Summary " << "Reference version of ComputeMG used " << "Performance results are most likely suboptimal " << std::endl;
       }
       if (!A.isWaxpbyOptimized) {
-        doc.get("Final Summary")->add("Reference version of ComputeWAXPBY used","Performance results are most likely suboptimal");
+        std::cout << "Final Summary " << "Reference version of ComputeWAXPBY used " << "Performance results are most likely suboptimal " << std::endl;
       }
       if (times[0]>=minOfficialTime) {
-        doc.get("Final Summary")->add("Please upload results from the YAML file contents to","http://hpcg-benchmark.org");
+        std::cout << "Final Summary " << "Please upload results from the YAML file contents to " << "http://hpcg-benchmark.org" << std::endl;
       }
       else {
-        doc.get("Final Summary")->add("Results are valid but execution time (sec) is",times[0]);
+        std::cout << "Final Summary " << "Results are valid but execution time (sec) is " << times[0] << std::endl;
         if (quickPath) {
-          doc.get("Final Summary")->add("You have selected the QuickPath option", "Results are official for legacy installed systems with confirmation from the HPCG Benchmark leaders.");
-          doc.get("Final Summary")->add("After confirmation please upload results from the YAML file contents to","http://hpcg-benchmark.org");
+          std::cout << "Final Summary " << "You have selected the QuickPath option " <<  "Results are official for legacy installed systems with confirmation from the HPCG Benchmark leaders. " << std::endl;
+          std::cout << "Final Summary " << "After confirmation please upload results from the YAML file contents to " << "http://hpcg-benchmark.org" << std::endl;
         } else {
-          doc.get("Final Summary")->add("Official results execution time (sec) must be at least",minOfficialTime);
+          std::cout << "Final Summary " << "Official results execution time (sec) must be at least " << minOfficialTime << std::endl;
         }
       }
     } else {
 #ifdef HPCG_USE_FUSED_SYMGS_SPMV
-      doc.get("Final Summary")->add("HPCG result is INVALID because SYMGS and SPMV were fused. GFLOP/s rating of", totalGflops);
+      std::cout << "Final Summary " << "HPCG result is INVALID because SYMGS and SPMV were fused. GFLOP/s rating of " <<  totalGflops << std::endl;
 #else
-      doc.get("Final Summary")->add("HPCG result is","INVALID.");
+      std::cout << "Final Summary " << "HPCG result is " << "INVALID." << std::endl;
 #endif
-      doc.get("Final Summary")->add("Please review the YAML file contents","You may NOT submit these results for consideration.");
+      std::cout << "Final Summary " << "Please review the YAML file contents " << "You may NOT submit these results for consideration." << std::endl;
     }
-
-    std::string yaml = doc.generate();
-#ifdef HPCG_DEBUG
-    HPCG_fout << yaml;
-#endif
   }
   return;
 }

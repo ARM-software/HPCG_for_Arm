@@ -33,6 +33,8 @@ using std::endl;
 #endif
 #include <cassert>
 
+#include <iostream>
+
 #include "GenerateProblem_ref.hpp"
 
 
@@ -144,7 +146,7 @@ void GenerateProblem_ref(SparseMatrix & A, Vector * b, Vector * x, Vector * xexa
 
         A.localToGlobalMap[currentLocalRow] = currentGlobalRow;
 #ifdef HPCG_DETAILED_DEBUG
-        HPCG_fout << " rank, globalRow, localRow = " << A.geom->rank << " " << currentGlobalRow << " " << A.globalToLocalMap[currentGlobalRow] << endl;
+        std::cout << " rank, globalRow, localRow = " << A.geom->rank << " " << currentGlobalRow << " " << A.globalToLocalMap[currentGlobalRow] << endl;
 #endif
         char numberOfNonzerosInRow = 0;
         double * currentValuePointer = matrixValues[currentLocalRow]; // Pointer to current value in current row
@@ -182,7 +184,7 @@ void GenerateProblem_ref(SparseMatrix & A, Vector * b, Vector * x, Vector * xexa
     } // end iy loop
   } // end iz loop
 #ifdef HPCG_DETAILED_DEBUG
-  HPCG_fout     << "Process " << A.geom->rank << " of " << A.geom->size <<" has " << localNumberOfRows    << " rows."     << endl
+  std::cout     << "Process " << A.geom->rank << " of " << A.geom->size <<" has " << localNumberOfRows    << " rows."     << endl
       << "Process " << A.geom->rank << " of " << A.geom->size <<" has " << localNumberOfNonzeros<< " nonzeros." <<endl;
 #endif
 

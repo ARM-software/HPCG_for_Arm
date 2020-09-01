@@ -46,7 +46,7 @@ using std::endl;
 
   @see ExchangeHalo
 */
-void SetupHalo_ref(SparseMatrix & A) {
+void SetupHalo_ref(SparseMatrix A) {
 
   // Extract Matrix pieces
 
@@ -83,7 +83,7 @@ void SetupHalo_ref(SparseMatrix & A) {
       global_int_t curIndex = mtxIndG[i][j];
       int rankIdOfColumnEntry = ComputeRankOfMatrixRow(*(A.geom), curIndex);
 #ifdef HPCG_DETAILED_DEBUG
-      HPCG_fout << "rank, row , col, globalToLocalMap[col] = " << A.geom->rank << " " << currentGlobalRow << " "
+      std::cout << "rank, row , col, globalToLocalMap[col] = " << A.geom->rank << " " << currentGlobalRow << " "
           << curIndex << " " << A.globalToLocalMap[curIndex] << endl;
 #endif
       if (A.geom->rank!=rankIdOfColumnEntry) {// If column index is not a row index, then it comes from another processor
@@ -105,7 +105,7 @@ void SetupHalo_ref(SparseMatrix & A) {
 
 #ifdef HPCG_DETAILED_DEBUG
   // These are all attributes that should be true, due to symmetry
-  HPCG_fout << "totalToBeSent = " << totalToBeSent << " totalToBeReceived = " << totalToBeReceived << endl;
+  std::cout << "totalToBeSent = " << totalToBeSent << " totalToBeReceived = " << totalToBeReceived << endl;
   assert(totalToBeSent==totalToBeReceived); // Number of sent entry should equal number of received
   assert(sendList.size()==receiveList.size()); // Number of send-to neighbors should equal number of receive-from
   // Each receive-from neighbor should be a send-to neighbor, and send the same number of entries
@@ -133,7 +133,6 @@ void SetupHalo_ref(SparseMatrix & A) {
       externalToLocalMap[*i] = localNumberOfRows + receiveEntryCount; // The remote columns are indexed at end of internals
     }
     for (set_iter i = sendList[neighborId].begin(); i != sendList[neighborId].end(); ++i, ++sendEntryCount) {
-      //if (geom.rank==1) HPCG_fout << "*i, globalToLocalMap[*i], sendEntryCount = " << *i << " " << A.globalToLocalMap[*i] << " " << sendEntryCount << endl;
       elementsToSend[sendEntryCount] = A.globalToLocalMap[*i]; // store local ids of entry to send
     }
   }
@@ -166,11 +165,11 @@ void SetupHalo_ref(SparseMatrix & A) {
   A.sendBuffer = sendBuffer;
 
 #ifdef HPCG_DETAILED_DEBUG
-  HPCG_fout << " For rank " << A.geom->rank << " of " << A.geom->size << ", number of neighbors = " << A.numberOfSendNeighbors << endl;
+  std::cout << " For rank " << A.geom->rank << " of " << A.geom->size << ", number of neighbors = " << A.numberOfSendNeighbors << endl;
   for (int i = 0; i < A.numberOfSendNeighbors; i++) {
-    HPCG_fout << "     rank " << A.geom->rank << " neighbor " << neighbors[i] << " send/recv length = " << sendLength[i] << "/" << receiveLength[i] << endl;
+      std::cout << "     rank " << A.geom->rank << " neighbor " << neighbors[i] << " send/recv length = " << sendLength[i] << "/" << receiveLength[i] << endl;
     for (local_int_t j = 0; j<sendLength[i]; ++j)
-      HPCG_fout << "       rank " << A.geom->rank << " elementsToSend[" << j << "] = " << elementsToSend[j] << endl;
+      std::cout << "       rank " << A.geom->rank << " elementsToSend[" << j << "] = " << elementsToSend[j] << endl;
   }
 #endif
 

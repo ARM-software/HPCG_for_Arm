@@ -39,7 +39,7 @@
 
   @see ExchangeHalo
 */
-void SetupHalo(SparseMatrix & A) {
+void SetupHalo(SparseMatrix A) {
 
   return(SetupHalo_ref(A));
 }

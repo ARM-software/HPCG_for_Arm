@@ -53,7 +53,7 @@ int ComputeResidual(const local_int_t n, const Vector & v1, const Vector & v2, d
   double local_residual = 0.0;
 
 #ifndef HPCG_NO_OPENMP
-  #pragma omp parallel default(none) shared(local_residual, v1v, v2v, n)
+  #pragma omp parallel default(none) shared(local_residual, v1v, v2v)
   {
     double threadlocal_residual = 0.0;
     #pragma omp for
@@ -71,7 +71,7 @@ int ComputeResidual(const local_int_t n, const Vector & v1, const Vector & v2, d
     double diff = std::fabs(v1v[i] - v2v[i]);
     if (diff > local_residual) local_residual = diff;
 #ifdef HPCG_DETAILED_DEBUG
-    HPCG_fout << " Computed, exact, diff = " << v1v[i] << " " << v2v[i] << " " << diff << std::endl;
+    std::cout << " Computed, exact, diff = " << v1v[i] << " " << v2v[i] << " " << diff << std::endl;
 #endif
   }
 #endif

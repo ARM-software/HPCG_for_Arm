@@ -75,9 +75,6 @@ string YAML_Doc::generateYAML() {
   } else
     filename = "./" + filename;
 
-  ofstream myfile;
-  myfile.open(filename.c_str());
-  myfile << yaml;
-  myfile.close();
+  std::cout << yaml;
   return yaml;
 }

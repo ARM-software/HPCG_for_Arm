@@ -100,11 +100,12 @@ int OptimizeCoarseProblem(SparseMatrix & A) {
 	}
 
 	// Create an adjacency matrix for the blocked grid
-	local_int_t **blockIndices = new local_int_t*[numberOfBlocks];
-	for ( local_int_t i = 0; i < numberOfBlocks; i++ ) {
+	local_int_t **blockIndices = new local_int_t*[1024];
+	for ( local_int_t i = 0; i < 1024; i++ ) {
 		blockIndices[i] = new local_int_t[27];
 	}
-	local_int_t *nonzerosInBlock = new local_int_t[numberOfBlocks];
+	local_int_t *nonzerosInBlock = new local_int_t[1024];
+
 	for ( local_int_t z = 0; z < blocksInZ; z++ ) {
 		for ( local_int_t y = 0; y < blocksInY; y++ ) {
 			for ( local_int_t x = 0; x < blocksInX; x++ ) {
@@ -191,9 +192,9 @@ int OptimizeCoarseProblem(SparseMatrix & A) {
 	}
 
 	// Allocate memory for temporary data structures
-	double **matrixValues = new double*[nrow];
-	local_int_t **mtxIndL = new local_int_t*[nrow];
-	unsigned char *nonzerosInRow = new unsigned char[nrow];
+	double **matrixValues = new double*[32768];
+	local_int_t **mtxIndL = new local_int_t*[32768];
+	unsigned char *nonzerosInRow = new unsigned char[32768];
 	for ( local_int_t i = 0; i < nrow; i++ ) {
 		matrixValues[i] = new double[27];
 		mtxIndL[i] = new local_int_t[27];
@@ -483,10 +484,10 @@ int OptimizeProblem(SparseMatrix & A, CGData & data, Vector & b, Vector & x, Vec
 	}
 
 	// Now we need to allocate some structure to temporary allocate the reordered structures
-	double **matrixValues = new double*[nrow];
-	local_int_t **mtxIndL = new local_int_t*[nrow];
-	char *nonzerosInRow = new char[nrow];
-	for ( local_int_t i = 0; i < nrow; i++ ) {
+	double **matrixValues = new double*[262144];
+	local_int_t **mtxIndL = new local_int_t*[262144];
+	char *nonzerosInRow = new char[262144];
+	for ( local_int_t i = 0; i < 262144; i++ ) {
 		matrixValues[i] = new double[27];
 		mtxIndL[i] = new local_int_t[27];
 	}
@@ -559,6 +560,7 @@ int OptimizeProblem(SparseMatrix & A, CGData & data, Vector & b, Vector & x, Vec
 	// Reorder b (RHS) vector
 	Vector bReorder;
 	InitializeVector(bReorder, b.localLength);
+    bReorder.values = new double[262144];
 	CopyVector(b, bReorder);
 	CopyAndReorderVector(bReorder, b, A.whichNewRowIsOldRow);
 

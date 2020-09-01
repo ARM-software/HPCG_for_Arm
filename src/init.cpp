@@ -33,12 +33,11 @@ const char* NULLDEVICE="/dev/null";
 
 #include <fstream>
 #include <iostream>
+using std::endl;
 
 #include "hpcg.hpp"
 
 #include "ReadHpcgDat.hpp"
-
-std::ofstream HPCG_fout; //!< output file stream for logging activities during HPCG run
 
 static int
 startswith(const char * s, const char * prefix) {
@@ -69,14 +68,14 @@ HPCG_Init(int * argc_p, char ** *argv_p, HPCG_Params & params) {
   int argc = *argc_p;
   char ** argv = *argv_p;
   char fname[80];
-  int i, j, *iparams;
+  int i, j;
   char cparams[][7] = {"--nx=", "--ny=", "--nz=", "--rt=", "--pz=", "--zl=", "--zu=", "--npx=", "--npy=", "--npz="};
   time_t rawtime;
   tm * ptm;
   const int nparams = (sizeof cparams) / (sizeof cparams[0]);
   bool broadcastParams = false; // Make true if parameters read from file.
 
-  iparams = (int *)malloc(sizeof(int) * nparams);
+  auto iparams = new int[10];
 
   // Initialize iparams
   for (i = 0; i < nparams; ++i) iparams[i] = 0;
@@ -96,7 +95,6 @@ HPCG_Init(int * argc_p, char ** *argv_p, HPCG_Params & params) {
   int * rt  = iparams+3;  // Assume runtime was not specified and will be read from the hpcg.dat file
   if (! iparams[3]) rt = 0; // If --rt was specified, we already have the runtime, so don't read it from file
   if (! iparams[0] && ! iparams[1] && ! iparams[2]) { /* no geometry arguments on the command line */
-    ReadHpcgDat(iparams, rt, iparams+7);
     broadcastParams = true;
   }
 
@@ -118,18 +116,18 @@ HPCG_Init(int * argc_p, char ** *argv_p, HPCG_Params & params) {
   }
 #endif
 
-  params.nx = iparams[0];
-  params.ny = iparams[1];
-  params.nz = iparams[2];
+  params.nx = 32;
+  params.ny = 32;
+  params.nz = 32;
 
-  params.runningTime = iparams[3];
-  params.pz = iparams[4];
-  params.zl = iparams[5];
-  params.zu = iparams[6];
+  params.runningTime = 0;
+  params.pz = 0;
+  params.zl = 0;
+  params.zu = 0;
 
-  params.npx = iparams[7];
-  params.npy = iparams[8];
-  params.npz = iparams[9];
+  params.npx = 0;
+  params.npy = 0;
+  params.npz = 0;
 
 #ifndef HPCG_NO_MPI
   MPI_Comm_rank( MPI_COMM_WORLD, &params.comm_rank );
@@ -145,24 +143,6 @@ HPCG_Init(int * argc_p, char ** *argv_p, HPCG_Params & params) {
   #pragma omp parallel
   params.numThreads = omp_get_num_threads();
 #endif
-//  for (i = 0; i < nparams; ++i) std::cout << "rank = "<< params.comm_rank << " iparam["<<i<<"] = " << iparams[i] << "\n";
-
-  time ( &rawtime );
-  ptm = localtime(&rawtime);
-  sprintf( fname, "hpcg%04d%02d%02dT%02d%02d%02d.txt",
-      1900 + ptm->tm_year, ptm->tm_mon+1, ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec );
-
-  if (0 == params.comm_rank) {
-    HPCG_fout.open(fname);
-  } else {
-#if defined(HPCG_DEBUG) || defined(HPCG_DETAILED_DEBUG)
-    sprintf( fname, "hpcg%04d%02d%02dT%02d%02d%02d_%d.txt",
-        1900 + ptm->tm_year, ptm->tm_mon+1, ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec, params.comm_rank );
-    HPCG_fout.open(fname);
-#else
-    HPCG_fout.open(NULLDEVICE);
-#endif
-  }
 
   free( iparams );
 

@@ -26,6 +26,7 @@
 #include "hpcg.hpp"
 
 #include "CheckAspectRatio.hpp"
+#include <iostream>
 
 int
 CheckAspectRatio(double smallest_ratio, int x, int y, int z, const char *what, bool DoIo) {
@@ -33,11 +34,11 @@ CheckAspectRatio(double smallest_ratio, int x, int y, int z, const char *what, b
 
   if (current_ratio < smallest_ratio) { // ratio of the smallest to the largest
     if (DoIo) {
-      HPCG_fout << "The " << what << " sizes (" << x << "," << y << "," << z <<
+      std::cout << "The " << what << " sizes (" << x << "," << y << "," << z <<
         ") are invalid because the ratio min(x,y,z)/max(x,y,z)=" << current_ratio <<
         " is too small (at least " << smallest_ratio << " is required)." << std::endl;
-      HPCG_fout << "The shape should resemble a 3D cube. Please adjust and try again." << std::endl;
-      HPCG_fout.flush();
+      std::cout << "The shape should resemble a 3D cube. Please adjust and try again." << std::endl;
+      std::cout.flush();
     }
 
 #ifndef HPCG_NO_MPI

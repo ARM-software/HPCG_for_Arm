@@ -27,6 +27,7 @@
 #include "GenerateGeometry.hpp"
 #include "GenerateProblem.hpp"
 #include "SetupHalo.hpp"
+#include <iostream>
 
 /*!
   Routine to construct a prolongation/restriction operator for a given fine grid matrix
@@ -49,7 +50,7 @@ void GenerateCoarseProblem(const SparseMatrix & Af) {
   local_int_t nxc, nyc, nzc; //Coarse nx, ny, nz
   assert(nxf%2==0); assert(nyf%2==0); assert(nzf%2==0); // Need fine grid dimensions to be divisible by 2
   nxc = nxf/2; nyc = nyf/2; nzc = nzf/2;
-  local_int_t * f2cOperator = new local_int_t[Af.localNumberOfRows];
+  local_int_t * f2cOperator = new local_int_t[262144];
   local_int_t localNumberOfRows = nxc*nyc*nzc; // This is the size of our subblock
   // If this assert fails, it most likely means that the local_int_t is set to int and should be set to long long
   assert(localNumberOfRows>0); // Throw an exception of the number of rows is less than zero (can happen if "int" overflows)
@@ -94,14 +95,17 @@ void GenerateCoarseProblem(const SparseMatrix & Af) {
 
   SparseMatrix * Ac = new SparseMatrix;
   InitializeSparseMatrix(*Ac, geomc);
-  GenerateProblem(*Ac, 0, 0, 0);
+  GenerateProblem(Ac, 0, 0, 0);
   SetupHalo(*Ac);
   Vector *rc = new Vector;
   Vector *xc = new Vector;
   Vector * Axf = new Vector;
   InitializeVector(*rc, Ac->localNumberOfRows);
+  rc->values = new double[32768];
   InitializeVector(*xc, Ac->localNumberOfColumns);
+  xc->values = new double[32768];
   InitializeVector(*Axf, Af.localNumberOfColumns);
+  Axf->values = new double[262144];
   Af.Ac = Ac;
   MGData * mgData = new MGData;
   InitializeMGData(f2cOperator, rc, xc, Axf, *mgData);

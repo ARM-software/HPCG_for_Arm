@@ -38,6 +38,7 @@
  */
 
 #include <fstream>
+#include <iostream>
 
 #include <cmath>
 
@@ -49,10 +50,6 @@
 #include "ComputeMG.hpp"
 #include "ComputeDotProduct.hpp"
 #include "ComputeWAXPBY.hpp"
-
-// Use TICK and TOCK to time a code section in MATLAB-like fashion
-#define TICK()  t0 = mytimer() //!< record current time in 't0'
-#define TOCK(t) t += mytimer() - t0 //!< store time difference in 't' using time in 't0'
 
 /*!
   Routine to compute an approximate solution to Ax = b
@@ -78,7 +75,7 @@ int CG(const SparseMatrix & A, CGData & data, const Vector & b, Vector & x,
     const int max_iter, const double tolerance, int & niters, double & normr, double & normr0,
     double * times, bool doPreconditioning) {
 
-  double t_begin = mytimer();  // Start timing right away
+  double t_begin = 0;  // Start timing right away
   normr = 0.0;
   double rtz = 0.0, oldrtz = 0.0, alpha = 0.0, beta = 0.0, pAp = 0.0;
 
@@ -98,13 +95,16 @@ int CG(const SparseMatrix & A, CGData & data, const Vector & b, Vector & x,
   Vector zOrdered;
   Vector xOrdered;
   InitializeVector(rOrdered, r.localLength);
+  rOrdered.values = new double[262144];
   InitializeVector(zOrdered, z.localLength);
+  zOrdered.values = new double[262144];
   InitializeVector(xOrdered, x.localLength);
+  xOrdered.values = new double[262144];
   CopyAndReorderVector(r, rOrdered, A.whichNewRowIsOldRow);
   CopyAndReorderVector(z, zOrdered, A.whichNewRowIsOldRow);
   CopyAndReorderVector(x, xOrdered, A.whichNewRowIsOldRow);
 
-  if (!doPreconditioning && A.geom->rank==0) HPCG_fout << "WARNING: PERFORMING UNPRECONDITIONED ITERATIONS" << std::endl;
+  if (!doPreconditioning && A.geom->rank==0) std::cout << "WARNING: PERFORMING UNPRECONDITIONED ITERATIONS" << std::endl;
 
 #ifdef HPCG_DEBUG
   int print_freq = 1;
@@ -113,12 +113,12 @@ int CG(const SparseMatrix & A, CGData & data, const Vector & b, Vector & x,
 #endif
   // p is of length ncols, copy x to p for sparse MV operation
   CopyVector(xOrdered, p);
-  TICK(); ComputeSPMV(A, p, Ap); TOCK(t3); // Ap = A*p
-  TICK(); ComputeWAXPBY(nrow, 1.0, b, -1.0, Ap, rOrdered, A.isWaxpbyOptimized);  TOCK(t2); // r = b - Ax (x stored in p)
-  TICK(); ComputeDotProduct(nrow, rOrdered, rOrdered, normr, t4, A.isDotProductOptimized); TOCK(t1);
+  ComputeSPMV(A, p, Ap); // Ap = A*p
+  ComputeWAXPBY(nrow, 1.0, b, -1.0, Ap, rOrdered, A.isWaxpbyOptimized); // r = b - Ax (x stored in p)
+  ComputeDotProduct(nrow, rOrdered, rOrdered, normr, t4, A.isDotProductOptimized);
   normr = sqrt(normr);
 #ifdef HPCG_DEBUG
-  if (A.geom->rank==0) HPCG_fout << "Initial Residual = "<< normr << std::endl;
+  if (A.geom->rank==0) std::cout << "Initial Residual = "<< normr << std::endl;
 #endif
 
   // Record initial residual for convergence testing
@@ -127,33 +127,31 @@ int CG(const SparseMatrix & A, CGData & data, const Vector & b, Vector & x,
   // Start iterations
 
   for (int k=1; k<=max_iter && normr/normr0 > tolerance; k++ ) {
-    TICK();
     if (doPreconditioning)
       ComputeMG(A, rOrdered, zOrdered); // Apply preconditioner
     else
       CopyVector (rOrdered, zOrdered); // copy r to z (no preconditioning)
-    TOCK(t5); // Preconditioner apply time
 
     if (k == 1) {
-      TICK(); ComputeWAXPBY(nrow, 1.0, zOrdered, 0.0, zOrdered, p, A.isWaxpbyOptimized); TOCK(t2); // Copy Mr to p
-      TICK(); ComputeDotProduct (nrow, rOrdered, zOrdered, rtz, t4, A.isDotProductOptimized); TOCK(t1); // rtz = r'*z
+      ComputeWAXPBY(nrow, 1.0, zOrdered, 0.0, zOrdered, p, A.isWaxpbyOptimized); // Copy Mr to p
+      ComputeDotProduct (nrow, rOrdered, zOrdered, rtz, t4, A.isDotProductOptimized); // rtz = r'*z
     } else {
       oldrtz = rtz;
-      TICK(); ComputeDotProduct (nrow, rOrdered, zOrdered, rtz, t4, A.isDotProductOptimized); TOCK(t1); // rtz = r'*z
+      ComputeDotProduct (nrow, rOrdered, zOrdered, rtz, t4, A.isDotProductOptimized); // rtz = r'*z
       beta = rtz/oldrtz;
-      TICK(); ComputeWAXPBY (nrow, 1.0, zOrdered, beta, p, p, A.isWaxpbyOptimized);  TOCK(t2); // p = beta*p + z
+      ComputeWAXPBY (nrow, 1.0, zOrdered, beta, p, p, A.isWaxpbyOptimized); // p = beta*p + z
     }
 
-    TICK(); ComputeSPMV(A, p, Ap); TOCK(t3); // Ap = A*p
-    TICK(); ComputeDotProduct(nrow, p, Ap, pAp, t4, A.isDotProductOptimized); TOCK(t1); // alpha = p'*Ap
+    ComputeSPMV(A, p, Ap); // Ap = A*p
+    ComputeDotProduct(nrow, p, Ap, pAp, t4, A.isDotProductOptimized); // alpha = p'*Ap
     alpha = rtz/pAp;
-    TICK(); ComputeWAXPBY(nrow, 1.0, xOrdered, alpha, p, xOrdered, A.isWaxpbyOptimized);// x = x + alpha*p
-            ComputeWAXPBY(nrow, 1.0, rOrdered, -alpha, Ap, rOrdered, A.isWaxpbyOptimized);  TOCK(t2);// r = r - alpha*Ap
-    TICK(); ComputeDotProduct(nrow, rOrdered, rOrdered, normr, t4, A.isDotProductOptimized); TOCK(t1);
+    ComputeWAXPBY(nrow, 1.0, xOrdered, alpha, p, xOrdered, A.isWaxpbyOptimized); // x = x + alpha*p
+    ComputeWAXPBY(nrow, 1.0, rOrdered, -alpha, Ap, rOrdered, A.isWaxpbyOptimized); // r = r - alpha*Ap
+    ComputeDotProduct(nrow, rOrdered, rOrdered, normr, t4, A.isDotProductOptimized);
     normr = sqrt(normr);
 #ifdef HPCG_DEBUG
     if (A.geom->rank==0 && (k%print_freq == 0 || k == max_iter))
-      HPCG_fout << "Iteration = "<< k << "   Scaled Residual = "<< normr/normr0 << std::endl;
+      std::cout << "Iteration = "<< k << "   Scaled Residual = "<< normr/normr0 << std::endl;
 #endif
     niters = k;
   }
@@ -172,9 +170,6 @@ int CG(const SparseMatrix & A, CGData & data, const Vector & b, Vector & x,
   times[3] += t3; // SPMV time
   times[4] += t4; // AllReduce time
   times[5] += t5; // preconditioner apply time
-//#ifndef HPCG_NO_MPI
-//  times[6] += t6; // exchange halo time
-//#endif
-  times[0] += mytimer() - t_begin;  // Total time. All done...
+  times[0] += 0;  // Total time. All done...
   return 0;
 }
