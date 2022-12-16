@@ -1232,7 +1232,8 @@ int ComputeFusedSYMGS_SPMV ( const SparseMatrix & A, const Vector & r, Vector & 
 	double * const xv = x.values;
 	double * const yv = y.values;
 	double **matrixDiagonal = A.matrixDiagonal;
-
+	//define temp storage for rv - matrix lower product x
+	std::vector<double>storeBMinusLx(r.localLength, 0);
 	/*
 	 * FORWARD
 	 */
@@ -1250,6 +1251,10 @@ int ComputeFusedSYMGS_SPMV ( const SparseMatrix & A, const Vector & r, Vector & 
 
 			for ( local_int_t j = 0; j < currentNumberOfNonzeros; j++ ) {
 				local_int_t curCol = currentColIndices[j];
+				//add temp storage for rv - matrix lower product x
+				if (curCol == row) {
+					storeBMinusLx[row] = sum;
+				}
 				sum -= currentValues[j] * xv[curCol];
 			}
 			sum += xv[row] * currentDiagonal;
@@ -1270,22 +1275,52 @@ int ComputeFusedSYMGS_SPMV ( const SparseMatrix & A, const Vector & r, Vector & 
 			const local_int_t * const currentColIndices = A.mtxIndL[row];
 			const int currentNumberOfNonzeros = A.nonzerosInRow[row];
 			const double currentDiagonal = matrixDiagonal[row][0];
-			double sum = 0.0;
-
+			//use temp storage for rv - matrix lower product x
+			double sum = storeBMinusLx[row];
 			for ( local_int_t j = currentNumberOfNonzeros-1; j >= 0; j-- ) {
 				local_int_t curCol = currentColIndices[j];
-				sum += currentValues[j] * xv[curCol];
+				if (curCol > row) {
+					sum -= currentValues[j] * xv[curCol];
+				}
 			}
-			sum -= xv[row] * currentDiagonal;
-			xv[row] = (rv[row] - sum) / currentDiagonal;
-			sum += xv[row] * currentDiagonal;
-			yv[row] = sum;
+			
+			xv[row] = sum / currentDiagonal;
+
+			// if symmetry property can be used, the fusion can be much faster.
+			// yv[row] = storeBMinusLx[row];
+			// //use temp storage for Ax = (L+D+U)x = b-Lx_pre+Lx
+			// for ( local_int_t j = 0; j < currentNumberOfNonzeros; j++ ) {
+			// 	local_int_t curCol = currentColIndices[j];
+			// 	if (curCol > row) {
+			// 		yv[curCol] += currentValues[j] * xv[row];
+			// 	}
+			// }
+		}
+	}
+
+	for ( local_int_t l = A.tdg.size()-1; l >= 0; l-- ) {
+#ifndef HPCG_NO_OPENMP
+#pragma omp parallel for
+#endif
+		for ( local_int_t i = A.tdg[l].size()-1; i >= 0; i-- ) {
+			local_int_t row = A.tdg[l][i];
+			const double * const currentValues = A.matrixValues[row];
+			const local_int_t * const currentColIndices = A.mtxIndL[row];
+			const int currentNumberOfNonzeros = A.nonzerosInRow[row];
+			const double currentDiagonal = matrixDiagonal[row][0];
+
+			yv[row] = storeBMinusLx[row];
+			for ( local_int_t j = currentNumberOfNonzeros-1; j >= 0; j-- ) {
+				local_int_t curCol = currentColIndices[j];
+				if (curCol < row) {
+					yv[row] += currentValues[j] * xv[curCol];
+				}
+			}
 		}
 	}
 
 	return 0;
 }
-
 int ComputeSYMGS_TDG ( const SparseMatrix & A, const Vector & r, Vector & x ) {
 
 	assert( x.localLength == A.localNumberOfColumns);
